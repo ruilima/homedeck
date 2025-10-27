@@ -26,9 +26,8 @@ logging.basicConfig(level=logging.INFO)
 ENV_ENABLE_CACHE = int(os.getenv('ENABLE_CACHE', 1)) != 0
 CACHE_ICONS_DIR = os.path.join('.cache', 'icons')
 CACHE_GENERATED_DIR = os.path.join(CACHE_ICONS_DIR, '_generated')
-# Remove _generated directory when the script starts
-if os.path.exists(CACHE_GENERATED_DIR):
-    shutil.rmtree(CACHE_GENERATED_DIR)
+# Keep generated icons cache to improve performance on restart
+# Cache is automatically updated when icon configuration changes
 
 
 class Icon:
