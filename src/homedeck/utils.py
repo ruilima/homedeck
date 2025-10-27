@@ -20,6 +20,9 @@ from materialyoucolor.scheme.scheme_vibrant import SchemeVibrant
 from .enums import ButtonElementAction
 
 HAS_OPTIPNG = shutil.which('optipng') is not None
+# Disable optipng by default for better performance
+# Set ENABLE_OPTIPNG=1 to enable image optimization
+ENABLE_OPTIPNG = int(os.getenv('ENABLE_OPTIPNG', 0)) != 0
 
 
 def normalize_tuple(offset):
@@ -148,7 +151,8 @@ def compress_folder(folder_path, output_zip, compress_level=0):
 
 
 def optimize_image(file_path, optimize_level=2):
-    if not HAS_OPTIPNG:
+    # Skip optimization if disabled or optipng not available
+    if not ENABLE_OPTIPNG or not HAS_OPTIPNG:
         return
 
     try:

@@ -1,11 +1,10 @@
 from __future__ import annotations
 
+import json
 import os
 import shutil
 from copy import deepcopy
 from typing import Dict
-
-from deepdiff import DeepDiff
 
 from .dataclasses import (
     PageButtonActionConfig,
@@ -17,6 +16,20 @@ from .enums import ButtonElementAction, InteractionType
 from .icons import icon_provider
 from .template import render_template
 from .utils import deep_merge
+
+
+def _fast_compare(obj1, obj2) -> bool:
+    """Fast comparison using JSON serialization. Returns True if equal."""
+    if obj1 is None and obj2 is None:
+        return True
+    if obj1 is None or obj2 is None:
+        return False
+    try:
+        # Convert to JSON strings for fast comparison
+        return json.dumps(obj1, sort_keys=True, default=str) == json.dumps(obj2, sort_keys=True, default=str)
+    except (TypeError, ValueError):
+        # Fallback to simple equality
+        return obj1 == obj2
 
 
 class ButtonElement:
@@ -192,8 +205,8 @@ class PageElement:
             old_button = old_raws.get(index)
             new_button = new_raws.get(index + (page_number - 1) * buttons_per_page)
 
-            changed = DeepDiff(old_button, new_button)
-            if not changed:
+            # Fast comparison - if equal, no change
+            if _fast_compare(old_button, new_button):
                 continue
 
             # Set changed button
@@ -213,8 +226,8 @@ class PageElement:
         if not other or self._page_config != other.page_config:
             return False
 
-        diff = DeepDiff(self.button_raws, other.button_raws)
-        return not diff
+        # Fast comparison of button_raws
+        return _fast_compare(self.button_raws, other.button_raws)
 
     @staticmethod
     def generate(buttons: Dict[int, ButtonElement]):

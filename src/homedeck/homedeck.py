@@ -184,14 +184,12 @@ class HomeDeck:
                     elif self._sleep_status == SleepStatus.SLEEP:
                         # Only wake the device up on releasing button
                         if not is_holding and not command.pressed:
-                            # Reload page
-                            self.force_reload_current_page()
+                            # Wake up first
+                            self._wake_up()
                             # Reload small window
                             self._device.restore_small_window()
-                            # Wait for a bit
-                            await asyncio.sleep(0.2)
-                            # Wake up
-                            self._wake_up()
+                            # Reload page
+                            self.force_reload_current_page()
 
                         # Don't accept current action
                         is_holding = False
@@ -261,8 +259,6 @@ class HomeDeck:
             elif interaction == InteractionType.HOLD:
                 # Sleep
                 self._sleep()
-                # Wait for a bit
-                await asyncio.sleep(0.2)
                 # Restore to the previous mode
                 self._device.restore_small_window()
             return
@@ -288,6 +284,9 @@ class HomeDeck:
 
         self._sleep_status = SleepStatus.WAKE
         self._last_action_time = time.time()
+
+        # Debounce timer for HA state changes
+        self._ha_reload_timer = None
 
     async def _setup(self):
         # Setup event bus
@@ -357,7 +356,17 @@ class HomeDeck:
     async def _ha_on_state_changed(self, _):
         # Only reload page when it's not sleeping
         if self._sleep_status != SleepStatus.SLEEP:
-            self.reload_current_page()
+            # Cancel existing timer if any
+            if self._ha_reload_timer:
+                self._ha_reload_timer.cancel()
+
+            # Create new debounced reload timer (100ms)
+            async def debounced_reload():
+                await asyncio.sleep(0.1)
+                self._ha_reload_timer = None
+                self.reload_current_page()
+
+            self._ha_reload_timer = asyncio.create_task(debounced_reload())
 
     async def _setup_hot_reload(self):
         print('Setting up hot reload')

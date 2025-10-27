@@ -1,10 +1,17 @@
 import functools as ft
 import traceback
+from functools import lru_cache
 from typing import Union
 
 import jinja2
 
 env = jinja2.Environment()
+
+
+@lru_cache(maxsize=256)
+def _compile_template(template_string: str):
+    """Cache compiled Jinja2 templates to avoid recompilation."""
+    return env.from_string(template_string)
 
 
 def _to_float(s: str) -> Union[float, bool]:
@@ -99,7 +106,9 @@ def render_template(source, all_states: dict, entity_id=None):
         return [render_template(v, all_states, entity_id=entity_id) for v in source]
     elif isinstance(source, str):
         try:
-            return env.from_string(source).render(
+            # Use cached compiled template
+            template = _compile_template(source)
+            return template.render(
                 state_attr=ft.partial(_state_attr, all_states=all_states),
                 is_state=ft.partial(_is_state, all_states=all_states),
                 states=ft.partial(_states, all_states=all_states),
