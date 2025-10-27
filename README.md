@@ -1,9 +1,40 @@
 # HomeDeck
 
-> [!WARNING]
-> The documents are not finished yet, but the script is usable if you know how to run it. I'm writing the installation guide.
-
 A lightweight Python library to control Home Assistant using Stream Deck-like devices. It's designed to run on a less powerful Linux SBC (like Raspberry Pi Zero 2W, OrangePi Zero 2W...) with a deck connected so you can put it anywhere in the house.
+
+## Quick Start (Systemd Service)
+
+For automatic installation on Raspberry Pi / Orange Pi:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/redphx/homedeck.git
+cd homedeck
+
+# 2. Run diagnostics to check your system
+sudo ./diagnose.sh
+
+# 3. Configure Home Assistant connection
+cp .env.example .env
+nano .env  # Set HA_HOST and HA_ACCESS_TOKEN
+
+# 4. Configure your deck layout
+cp assets/configuration.yml.example assets/configuration.yml
+nano assets/configuration.yml
+
+# 5. Install and start the service
+sudo ./install-service.sh
+```
+
+The `install-service.sh` script automatically:
+- Detects correct Python and project paths
+- Installs dependencies
+- Generates systemd service file
+- Installs and starts the service
+
+**View logs:** `sudo journalctl -u homedeck.service -f`
+
+See [SYSTEMD_INSTALL.md](SYSTEMD_INSTALL.md) for detailed installation guide and troubleshooting.
 
 ### Features
 - ✅ Easy to use, syntax is similar to Home Assistant and CSS
