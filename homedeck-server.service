@@ -1,0 +1,19 @@
+[Unit]
+Description=HomeDeck Web Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/homedeck
+EnvironmentFile=/etc/homedeck/homedeck.env
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+ExecStart=/usr/bin/python3 /root/homedeck/server.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
