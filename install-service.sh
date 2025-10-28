@@ -2,6 +2,7 @@
 
 # HomeDeck Service Installer
 # Automatically detects paths and installs systemd service
+# Supports both system-wide and virtualenv installations
 
 set -e
 
@@ -14,26 +15,55 @@ echo ""
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo "✓ Project directory: $PROJECT_DIR"
 
-# Detect Python path
-PYTHON_PATH=$(which python3)
-if [ -z "$PYTHON_PATH" ]; then
-    echo "✗ Error: python3 not found in PATH"
-    exit 1
+# Check if venv exists
+VENV_PATH="$PROJECT_DIR/venv"
+if [ -d "$VENV_PATH" ] && [ -f "$VENV_PATH/bin/python3" ]; then
+    PYTHON_PATH="$VENV_PATH/bin/python3"
+    PIP_PATH="$VENV_PATH/bin/pip"
+    echo "✓ Using virtual environment"
+    echo "✓ Python path: $PYTHON_PATH"
+else
+    # Use system Python
+    PYTHON_PATH=$(which python3)
+    PIP_PATH=$(which pip3)
+    if [ -z "$PYTHON_PATH" ]; then
+        echo "✗ Error: python3 not found in PATH"
+        exit 1
+    fi
+    echo "✓ Using system Python: $PYTHON_PATH"
 fi
-echo "✓ Python path: $PYTHON_PATH"
 
 # Check if Python can import homedeck
 echo ""
 echo "Checking Python environment..."
 if ! $PYTHON_PATH -c "import homedeck" 2>/dev/null; then
     echo "⚠ Warning: homedeck module not installed"
-    echo "  Installing now..."
+    echo ""
+
+    # If no venv exists and system install fails, offer to create venv
+    if [ ! -d "$VENV_PATH" ]; then
+        echo "Creating virtual environment..."
+        python3 -m venv "$VENV_PATH" || {
+            echo "✗ Error: Failed to create virtual environment"
+            exit 1
+        }
+        echo "✓ Virtual environment created"
+
+        # Update paths to use venv
+        PYTHON_PATH="$VENV_PATH/bin/python3"
+        PIP_PATH="$VENV_PATH/bin/pip"
+        echo "✓ Using venv Python: $PYTHON_PATH"
+    fi
+
+    echo "Installing homedeck..."
     cd "$PROJECT_DIR"
-    pip3 install -e . || {
+    $PIP_PATH install -e . || {
         echo "✗ Error: Failed to install homedeck"
         exit 1
     }
     echo "✓ homedeck installed successfully"
+else
+    echo "✓ homedeck module already installed"
 fi
 
 # Check for .env file
@@ -110,7 +140,7 @@ fi
 # Test Python import (without running)
 if ! $PYTHON_PATH -c "import sys; sys.path.insert(0, '$PROJECT_DIR'); from homedeck.homedeck import HomeDeck" 2>/dev/null; then
     echo "✗ Error: Cannot import HomeDeck module"
-    echo "  Try running: pip3 install -e $PROJECT_DIR"
+    echo "  Something went wrong with the installation"
     exit 1
 fi
 echo "✓ Module imports successfully"
