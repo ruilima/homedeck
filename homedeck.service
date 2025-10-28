@@ -7,6 +7,7 @@ Wants=network-online.target
 Type=simple
 User=root
 WorkingDirectory=/root/homedeck
+EnvironmentFile=/etc/homedeck/homedeck.env
 Environment="PATH=/usr/local/bin:/usr/bin:/bin"
 ExecStart=/usr/bin/python3 /root/homedeck/deck.py
 Restart=always

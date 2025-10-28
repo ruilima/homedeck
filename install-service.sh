@@ -66,18 +66,79 @@ else
     echo "✓ homedeck module already installed"
 fi
 
-# Check for .env file
-if [ ! -f "$PROJECT_DIR/.env" ]; then
+# Setup environment file for systemd
+ENV_DIR="/etc/homedeck"
+ENV_FILE="$ENV_DIR/homedeck.env"
+
+echo ""
+echo "Setting up environment configuration..."
+
+# Create directory if it doesn't exist
+if [ ! -d "$ENV_DIR" ]; then
+    echo "Creating $ENV_DIR directory..."
+    if [ "$EUID" -ne 0 ]; then
+        sudo mkdir -p "$ENV_DIR"
+        sudo chown root:root "$ENV_DIR"
+        sudo chmod 755 "$ENV_DIR"
+    else
+        mkdir -p "$ENV_DIR"
+        chown root:root "$ENV_DIR"
+        chmod 755 "$ENV_DIR"
+    fi
+    echo "✓ Directory created"
+fi
+
+# Check if environment file exists
+if [ ! -f "$ENV_FILE" ]; then
     echo ""
-    echo "⚠ Warning: .env file not found"
-    echo "  Please create .env from .env.example and configure:"
-    echo "    cp .env.example .env"
-    echo "    nano .env"
+    echo "⚠ Environment file not found: $ENV_FILE"
     echo ""
-    read -p "Continue anyway? (y/N) " -n 1 -r
+    echo "Creating environment file from template..."
+
+    if [ "$EUID" -ne 0 ]; then
+        sudo cp "$PROJECT_DIR/homedeck.env.example" "$ENV_FILE"
+        sudo chown root:root "$ENV_FILE"
+        sudo chmod 600 "$ENV_FILE"
+    else
+        cp "$PROJECT_DIR/homedeck.env.example" "$ENV_FILE"
+        chown root:root "$ENV_FILE"
+        chmod 600 "$ENV_FILE"
+    fi
+
+    echo "✓ Environment file created: $ENV_FILE"
+    echo ""
+    echo "⚠ IMPORTANT: You MUST edit this file and configure:"
+    echo "  - HA_HOST (your Home Assistant URL)"
+    echo "  - HA_ACCESS_TOKEN (your long-lived access token)"
+    echo ""
+    echo "Edit with: sudo nano $ENV_FILE"
+    echo ""
+    read -p "Do you want to edit it now? (y/N) " -n 1 -r
     echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        exit 1
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        if [ "$EUID" -ne 0 ]; then
+            sudo nano "$ENV_FILE"
+        else
+            nano "$ENV_FILE"
+        fi
+    else
+        echo ""
+        echo "⚠ Service will not work until you configure $ENV_FILE"
+        read -p "Continue anyway? (y/N) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
+    fi
+else
+    echo "✓ Environment file found: $ENV_FILE"
+
+    # Check if it has the required variables
+    if grep -q "^HA_HOST=" "$ENV_FILE" && grep -q "^HA_ACCESS_TOKEN=" "$ENV_FILE"; then
+        echo "✓ Required variables configured"
+    else
+        echo "⚠ Warning: Some required variables may be missing"
+        echo "  Check: HA_HOST and HA_ACCESS_TOKEN"
     fi
 fi
 
@@ -109,6 +170,7 @@ Wants=network-online.target
 Type=simple
 User=root
 WorkingDirectory=$PROJECT_DIR
+EnvironmentFile=$ENV_FILE
 Environment="PATH=/usr/local/bin:/usr/bin:/bin"
 ExecStart=$PYTHON_PATH $PROJECT_DIR/deck.py
 Restart=always

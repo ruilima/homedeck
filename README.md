@@ -14,25 +14,25 @@ cd homedeck
 # 2. Run diagnostics to check your system
 sudo ./diagnose.sh
 
-# 3. Configure Home Assistant connection
-cp .env.example .env
-nano .env  # Set HA_HOST and HA_ACCESS_TOKEN
-
-# 4. Configure your deck layout
+# 3. Configure your deck layout
 cp assets/configuration.yml.example assets/configuration.yml
 nano assets/configuration.yml
 
-# 5. Install and start the service
+# 4. Install and start the service (will guide you through configuration)
 sudo ./install-service.sh
 ```
 
-The `install-service.sh` script automatically:
-- Detects correct Python and project paths
-- Installs dependencies
-- Generates systemd service file
-- Installs and starts the service
+The installer will guide you through:
+- ✅ Environment variable configuration (HA_HOST, HA_ACCESS_TOKEN)
+- ✅ Virtual environment setup (Python 3.12+ compatible)
+- ✅ Secure credential storage in `/etc/homedeck/homedeck.env`
+- ✅ Automatic service installation and startup
+
+**Configuration:** Environment variables are stored securely in `/etc/homedeck/homedeck.env` (readable only by root). See [ENVIRONMENT.md](ENVIRONMENT.md) for details.
 
 **View logs:** `sudo journalctl -u homedeck.service -f`
+
+**Edit configuration:** `sudo nano /etc/homedeck/homedeck.env` then `sudo systemctl restart homedeck.service`
 
 See [SYSTEMD_INSTALL.md](SYSTEMD_INSTALL.md) for detailed installation guide and troubleshooting.
 
