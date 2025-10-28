@@ -119,10 +119,17 @@ def render_template(source, all_states: dict, entity_id=None):
                 self_states=ft.partial(_self_states, entity_id=entity_id, all_states=all_states),
                 self_binary_text=ft.partial(_self_binary_text, entity_id=entity_id, all_states=all_states),
             ).strip()
-        except Exception:
-            print('⚠️', source)
-            traceback.print_exc()
-            return '#BUG'
+        except Exception as e:
+            # Better error message showing the failing template
+            error_msg = f"Template error in: {source[:100]}... | Error: {str(e)}"
+            print(f'⚠️ {error_msg}')
+            # Only print full traceback once per unique template
+            if source not in getattr(render_template, '_logged_errors', set()):
+                if not hasattr(render_template, '_logged_errors'):
+                    render_template._logged_errors = set()
+                render_template._logged_errors.add(source)
+                traceback.print_exc()
+            return ''  # Return empty string instead of '#BUG' to avoid visual noise
 
     return source
 

@@ -321,9 +321,12 @@ class HomeDeck:
 
                 # Setup Home Assistant
                 async with self._ha.connect():
+                    print('🏠 Connected to Home Assistant')
                     await self._ha.get_all_states()
+                    print('📊 Retrieved all states')
                     self._ha.on_event('state_changed', self._ha_on_state_changed)
                     await self._ha.subscribe_events('state_changed')
+                    print('✅ Subscribed to state_changed events')
 
                     self._is_ready = True
                     await asyncio.gather(
@@ -353,7 +356,11 @@ class HomeDeck:
 
                 await asyncio.sleep(reconnect_delay)
 
-    async def _ha_on_state_changed(self, _):
+    async def _ha_on_state_changed(self, event):
+        # Debug: log state changes
+        entity_id = event.get('data', {}).get('entity_id', 'unknown')
+        print(f'🔄 HA state changed: {entity_id}')
+
         # Only reload page when it's not sleeping
         if self._sleep_status != SleepStatus.SLEEP:
             # Cancel existing timer if any
@@ -364,9 +371,12 @@ class HomeDeck:
             async def debounced_reload():
                 await asyncio.sleep(0.1)
                 self._ha_reload_timer = None
+                print('🔄 Reloading page from HA state change')
                 self.reload_current_page()
 
             self._ha_reload_timer = asyncio.create_task(debounced_reload())
+        else:
+            print('😴 Device sleeping, skipping reload')
 
     async def _setup_hot_reload(self):
         print('Setting up hot reload')

@@ -290,8 +290,33 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 @app.head('/v{API_VERSION}/status')
-async def status_endpoint():
+async def status_head_endpoint():
     return Response(status_code=200)
+
+
+@app.get('/v{API_VERSION}/status')
+async def status_get_endpoint():
+    """
+    Get the status of the HomeDeck service.
+    Returns:
+        - status: "running" or "stopped"
+        - deck_connected: true if deck.py process is running
+    """
+    # Check if deck.py process is running
+    is_running = False
+    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+        try:
+            cmdline = proc.info.get('cmdline')
+            if cmdline and any(SCRIPT_NAME in arg for arg in cmdline):
+                is_running = True
+                break
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+
+    return {
+        "status": "running" if is_running else "stopped",
+        "deck_connected": is_running
+    }
 
 
 if __name__ == "__main__":
