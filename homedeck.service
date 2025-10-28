@@ -1,0 +1,18 @@
+[Unit]
+Description=HomeDeck Stream Deck Controller
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/homedeck
+Environment="PATH=/root/homedeck/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/root/homedeck/venv/bin/python3 /root/homedeck/deck.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
