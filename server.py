@@ -196,15 +196,33 @@ async def start_script():
 @app.post(f'/v{API_VERSION}/stop')
 async def stop_script():
     global process
-    if process is None:
-        return {'error': 'Script is not running'}
 
-    process.terminate()
-    await process.wait()
-    process = None
+    # Try to stop the process we started via API
+    if process is not None:
+        process.terminate()
+        await process.wait()
+        process = None
+        await broadcast_script_status()
+        return {'message': 'Script stopped'}
 
-    await broadcast_script_status()
-    return {'message': 'Script stopped'}
+    # If not started by us, try to find and kill the systemd-started process
+    killed = False
+    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+        try:
+            cmdline = proc.info.get('cmdline')
+            if cmdline and any(SCRIPT_NAME in arg for arg in cmdline):
+                proc.terminate()
+                killed = True
+                break
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+
+    if killed:
+        await asyncio.sleep(0.5)  # Give it time to stop
+        await broadcast_script_status()
+        return {'message': 'Script stopped'}
+
+    return {'error': 'Script is not running'}
 
 
 @app.get(f'/v{API_VERSION}/configuration')
