@@ -177,8 +177,12 @@ async def start_script():
     if process is not None or is_script_running():
         return {'error': 'Script is already running'}
 
+    current_dir = os.path.dirname(os.path.realpath(__file__))
+    venv_python = os.path.join(current_dir, 'venv', 'bin', 'python3')
+    python_cmd = venv_python if os.path.exists(venv_python) else 'python3'
+
     process = await asyncio.create_subprocess_exec(
-        'python3', '-u', SCRIPT_NAME,
+        python_cmd, '-u', SCRIPT_NAME,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
@@ -213,7 +217,7 @@ async def get_configuration():
     configuration_path = os.path.join(current_dir, 'assets', 'configuration.yml')
     content = ''
 
-    if os.path.exists:
+    if os.path.exists(configuration_path):
         with open(configuration_path, 'r') as fp:
             content = fp.read()
 
@@ -289,7 +293,7 @@ async def websocket_endpoint(websocket: WebSocket):
             websocket_clients.discard(websocket)
 
 
-@app.head('/v{API_VERSION}/status')
+@app.head(f'/v{API_VERSION}/status')
 async def status_endpoint():
     return Response(status_code=200)
 
