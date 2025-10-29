@@ -162,7 +162,9 @@ app.add_middleware(
 
 
 async def broadcast_script_status():
-    status = 'running' if (process and process.stdout) else 'stopped'
+    # Check if script is running (works for both systemd and API-started processes)
+    is_running = (process is not None and process.stdout) or is_script_running()
+    status = 'running' if is_running else 'stopped'
     await app.state.broadcast_queue.put({
         'type': 'status',
         'payload': {
