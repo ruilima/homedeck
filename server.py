@@ -176,9 +176,28 @@ async def broadcast_script_status():
 @app.post(f'/v{API_VERSION}/start')
 async def start_script():
     global process
+
+    # Check if already running
     if process is not None or is_script_running():
         return {'error': 'Script is already running'}
 
+    # Try to start via systemctl first (if available)
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            'systemctl', 'start', 'homedeck.service',
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        await proc.wait()
+
+        if proc.returncode == 0:
+            await asyncio.sleep(0.5)  # Give systemd time to start
+            await broadcast_script_status()
+            return {'message': 'Script started via systemd'}
+    except Exception:
+        pass  # systemctl not available or failed, try manual start
+
+    # Fallback: start process manually
     current_dir = os.path.dirname(os.path.realpath(__file__))
     venv_python = os.path.join(current_dir, 'venv', 'bin', 'python3')
     python_cmd = venv_python if os.path.exists(venv_python) else 'python3'
@@ -197,7 +216,28 @@ async def start_script():
 async def stop_script():
     global process
 
-    # Try to stop the process we started via API
+    # Check if anything is running
+    if process is None and not is_script_running():
+        return {'error': 'Script is not running'}
+
+    # Try to stop via systemctl first (if available)
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            'systemctl', 'stop', 'homedeck.service',
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        await proc.wait()
+
+        if proc.returncode == 0:
+            process = None
+            await asyncio.sleep(0.5)  # Give systemd time to stop
+            await broadcast_script_status()
+            return {'message': 'Script stopped via systemd'}
+    except Exception:
+        pass  # systemctl not available or failed, try manual stop
+
+    # Fallback: stop the process we started via API
     if process is not None:
         process.terminate()
         await process.wait()
@@ -205,7 +245,7 @@ async def stop_script():
         await broadcast_script_status()
         return {'message': 'Script stopped'}
 
-    # If not started by us, try to find and kill the systemd-started process
+    # Last resort: find and kill the process by name
     killed = False
     for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
         try:
@@ -222,7 +262,7 @@ async def stop_script():
         await broadcast_script_status()
         return {'message': 'Script stopped'}
 
-    return {'error': 'Script is not running'}
+    return {'error': 'Failed to stop script'}
 
 
 @app.get(f'/v{API_VERSION}/configuration')
