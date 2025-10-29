@@ -239,6 +239,14 @@ async def update_configuration(req: Request):
         base_configuration_dict = yaml.safe_load(fp.read())
 
     configuration_dict = yaml.safe_load(content)
+
+    # Handle empty/invalid YAML
+    if configuration_dict is None:
+        return {'error': 'Invalid YAML: content is empty or null'}
+
+    if not isinstance(configuration_dict, dict):
+        return {'error': 'Invalid YAML: must be a dictionary'}
+
     configuration_dict = deep_merge(base_configuration_dict, configuration_dict)
 
     with open(os.path.join(current_dir, 'src', 'homedeck', 'yaml', 'configuration.schema.yml'), 'r', encoding='utf-8') as fp:
