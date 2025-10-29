@@ -250,7 +250,11 @@ class HomeDeck:
         self._last_action_time = time.time()
 
     async def _on_interacted(self, interaction: InteractionType, index: int, state: object):
-        print('👆', interaction.value, index, state)
+        # Get button info for better logging
+        button = self._configuration.get_button(self._current_page_id, index) if self._configuration else None
+        button_name = button.name if button and hasattr(button, 'name') else 'Unknown'
+
+        print(f'👆 Button pressed: Position={index}, Name="{button_name}", Action={interaction.value}, Page="{self._current_page_id}"')
 
         # Small window button
         if index == 13:
@@ -263,7 +267,6 @@ class HomeDeck:
                 self._device.restore_small_window()
             return
 
-        button = self._configuration.get_button(self._current_page_id, index)
         if button:
             await button.trigger_action(self, interaction)
 
