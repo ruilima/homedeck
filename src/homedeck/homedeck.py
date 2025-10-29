@@ -252,9 +252,20 @@ class HomeDeck:
     async def _on_interacted(self, interaction: InteractionType, index: int, state: object):
         # Get button info for better logging
         button = self._configuration.get_button(self._current_page_id, index) if self._configuration else None
-        button_name = button.name if button and hasattr(button, 'name') else 'Unknown'
 
-        print(f'👆 Button pressed: Position={index}, Name="{button_name}", Action={interaction.value}, Page="{self._current_page_id}"')
+        # Try to get a useful button identifier
+        button_info = f"Position={index}"
+        if button:
+            # Try to get entity_id first (most useful)
+            if hasattr(button, 'entity_id') and button.entity_id:
+                button_info += f", Entity={button.entity_id}"
+            # Then try text property
+            if hasattr(button, 'text') and button.text:
+                text_str = str(button.text)[:50]
+                if '{{' not in text_str and '{%' not in text_str:  # Not a template
+                    button_info += f', Text="{text_str}"'
+
+        print(f'👆 Button: {button_info}, Action={interaction.value}, Page="{self._current_page_id}"')
 
         # Small window button
         if index == 13:
