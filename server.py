@@ -96,6 +96,7 @@ def is_script_running():
 
 
 async def read_script_output():
+    """Read output from deck.py process started by this server"""
     while True:
         if not process or not process.stdout:
             await asyncio.sleep(0.1)
@@ -115,6 +116,50 @@ async def read_script_output():
         })
 
         await asyncio.sleep(0.05)
+
+
+async def read_systemd_logs():
+    """Read logs from systemd-started deck.py service"""
+    while True:
+        try:
+            # Only read systemd logs if we didn't start the process ourselves
+            if process is not None:
+                await asyncio.sleep(1)
+                continue
+
+            # Check if homedeck.service exists and is running
+            if not is_script_running():
+                await asyncio.sleep(1)
+                continue
+
+            # Follow journalctl logs for homedeck.service
+            proc = await asyncio.create_subprocess_exec(
+                'journalctl', '-u', 'homedeck.service', '-f', '-n', '0', '--output=cat',
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+
+            while True:
+                # If we start our own process, stop following systemd logs
+                if process is not None:
+                    proc.terminate()
+                    break
+
+                line = await proc.stdout.readline()
+                if not line:
+                    break
+
+                await app.state.broadcast_queue.put({
+                    'type': 'logs',
+                    'payload': {
+                        'timestamp': int(time.time()),
+                        'message': line.decode().strip(),
+                    },
+                })
+
+        except Exception as e:
+            logger.error(f'Error reading systemd logs: {e}')
+            await asyncio.sleep(5)  # Wait before retrying
 
 
 async def broadcast_messages():
@@ -147,11 +192,13 @@ async def app_lifespan(app: FastAPI):
     # Run homedeck
     await start_script()
     read_task = asyncio.create_task(read_script_output())
+    systemd_logs_task = asyncio.create_task(read_systemd_logs())
 
     yield
 
     broadcast_task.cancel()
     read_task.cancel()
+    systemd_logs_task.cancel()
 
 
 app = FastAPI(lifespan=app_lifespan)
