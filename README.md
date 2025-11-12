@@ -8,7 +8,7 @@ For automatic installation on Raspberry Pi / Orange Pi:
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/redphx/homedeck.git
+git clone https://github.com/ruilima/homedeck.git
 cd homedeck
 
 # 2. Run diagnostics to check your system
